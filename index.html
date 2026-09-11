@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#111827" />
+  <meta name="theme-color" content="#0f172a" />
   <title>Каркасник CRM</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -13,48 +13,62 @@
       <div class="eyebrow">КАРКАСНИК</div>
       <h1>CRM</h1>
     </div>
-    <button class="icon-btn" id="resetBtn" title="Очистить демо-данные">↻</button>
+    <button class="icon-btn" id="resetBtn" title="Очистить данные">↻</button>
   </header>
 
   <main class="container">
     <section id="dashboard" class="view active">
-      <div class="hero">
-        <p>Управление строительством</p>
-        <h2>Все клиенты и заказы в одном месте</h2>
+      <div class="hero professional">
+        <div>
+          <p>Панель управления</p>
+          <h2>Продажи и строительство под контролем</h2>
+        </div>
+        <button class="hero-action" data-open="orderModal">+ Новая сделка</button>
       </div>
-      <div class="stats">
-        <div class="stat"><span>Клиенты</span><strong id="statClients">0</strong></div>
-        <div class="stat"><span>Заказы</span><strong id="statOrders">0</strong></div>
-        <div class="stat"><span>В работе</span><strong id="statActive">0</strong></div>
-        <div class="stat"><span>Сумма</span><strong id="statRevenue">0 ₽</strong></div>
+
+      <div class="kpi-grid">
+        <div class="kpi"><span>Сделок</span><strong id="statDeals">0</strong><small>в воронке</small></div>
+        <div class="kpi"><span>В стройке</span><strong id="statBuilds">0</strong><small>активных объектов</small></div>
+        <div class="kpi"><span>Портфель</span><strong id="statRevenue">0 ₽</strong><small>сумма договоров</small></div>
+        <div class="kpi"><span>Получено</span><strong id="statPaid">0 ₽</strong><small>предоплат</small></div>
       </div>
-      <div class="quick-actions">
-        <button class="primary" data-open="clientModal">+ Новый клиент</button>
-        <button class="secondary" data-open="orderModal">+ Новый заказ</button>
-      </div>
+
       <section class="panel">
-        <div class="section-head"><h3>Последние заказы</h3></div>
-        <div id="recentOrders" class="cards"></div>
+        <div class="section-head"><div><span class="section-kicker">ПРОДАЖИ</span><h3>Воронка</h3></div><button class="small secondary" data-view-jump="sales">Открыть</button></div>
+        <div id="funnelSummary" class="funnel-summary"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head"><div><span class="section-kicker">СТРОЙКА</span><h3>Активные объекты</h3></div><button class="small secondary" data-view-jump="builds">Все объекты</button></div>
+        <div id="buildSummary" class="cards"></div>
       </section>
     </section>
 
-    <section id="clients" class="view">
-      <div class="section-head"><h2>Клиенты</h2><button class="small primary" data-open="clientModal">+ Добавить</button></div>
-      <input class="search" id="clientSearch" placeholder="Поиск по имени, телефону, городу" />
-      <div id="clientList" class="cards"></div>
+    <section id="sales" class="view">
+      <div class="section-head sticky-head"><div><span class="section-kicker">CRM</span><h2>Продажи</h2></div><button class="small primary" data-open="orderModal">+ Сделка</button></div>
+      <input class="search" id="orderSearch" placeholder="Клиент, телефон, размер, статус" />
+      <div class="stage-filter" id="salesFilters"></div>
+      <div id="orderList" class="cards"></div>
     </section>
 
-    <section id="orders" class="view">
-      <div class="section-head"><h2>Заказы</h2><button class="small primary" data-open="orderModal">+ Добавить</button></div>
-      <input class="search" id="orderSearch" placeholder="Поиск по клиенту, размеру, статусу" />
-      <div id="orderList" class="cards"></div>
+    <section id="builds" class="view">
+      <div class="section-head sticky-head"><div><span class="section-kicker">ПРОИЗВОДСТВО</span><h2>Этапы стройки</h2></div></div>
+      <input class="search" id="buildSearch" placeholder="Поиск по клиенту или объекту" />
+      <div id="buildList" class="cards"></div>
+    </section>
+
+    <section id="clients" class="view">
+      <div class="section-head sticky-head"><div><span class="section-kicker">БАЗА</span><h2>Клиенты</h2></div><button class="small primary" data-open="clientModal">+ Клиент</button></div>
+      <input class="search" id="clientSearch" placeholder="Имя, телефон, город" />
+      <div id="clientList" class="cards"></div>
     </section>
   </main>
 
   <nav class="bottom-nav">
     <button class="nav-btn active" data-view="dashboard">⌂<span>Главная</span></button>
+    <button class="nav-btn" data-view="sales">₽<span>Продажи</span></button>
+    <button class="nav-btn" data-view="builds">▦<span>Стройка</span></button>
     <button class="nav-btn" data-view="clients">👤<span>Клиенты</span></button>
-    <button class="nav-btn" data-view="orders">▣<span>Заказы</span></button>
   </nav>
 
   <dialog id="clientModal" class="modal">
@@ -63,10 +77,9 @@
       <label>Имя<input name="name" required /></label>
       <label>Телефон<input name="phone" type="tel" required /></label>
       <label>WhatsApp / Telegram<input name="messenger" /></label>
-      <label>Город<input name="city" /></label>
+      <div class="grid2"><label>Город<input name="city" /></label><label>Дата обращения<input name="date" type="date" /></label></div>
       <label>Адрес строительства<input name="address" /></label>
-      <label>Откуда пришёл клиент<select name="source"><option>Авито</option><option>Instagram</option><option>Рекомендация</option><option>Сайт</option><option>Другое</option></select></label>
-      <label>Дата обращения<input name="date" type="date" /></label>
+      <label>Источник<select name="source"><option>Авито</option><option>Instagram</option><option>Рекомендация</option><option>Сайт</option><option>Другое</option></select></label>
       <label>Комментарий<textarea name="comment" rows="3"></textarea></label>
       <button class="primary full" type="submit">Сохранить клиента</button>
     </form>
@@ -74,15 +87,28 @@
 
   <dialog id="orderModal" class="modal">
     <form id="orderForm" method="dialog">
-      <div class="modal-head"><h3>Новый заказ</h3><button type="button" class="close">×</button></div>
+      <div class="modal-head"><h3>Новая сделка</h3><button type="button" class="close">×</button></div>
       <label>Клиент<select name="clientId" id="orderClient" required></select></label>
       <div class="grid2"><label>Размер дома<input name="size" placeholder="8×10" /></label><label>Площадь, м²<input name="area" type="number" min="0" /></label></div>
       <label>Комплектация<select name="package"><option>Эконом</option><option>Тёплый контур</option><option>Под ключ</option><option>Индивидуальная</option></select></label>
-      <div class="grid2"><label>Стоимость, ₽<input name="price" type="number" min="0" /></label><label>Предоплата, ₽<input name="prepayment" type="number" min="0" /></label></div>
-      <label>Статус<select name="status"><option>Новый</option><option>Расчёт</option><option>Договор</option><option>В работе</option><option>Завершён</option><option>Отказ</option></select></label>
-      <div class="grid2"><label>Начало<input name="startDate" type="date" /></label><label>Срок сдачи<input name="deadline" type="date" /></label></div>
+      <div class="grid2"><label>Сумма договора, ₽<input name="price" type="number" min="0" /></label><label>Предоплата, ₽<input name="prepayment" type="number" min="0" /></label></div>
+      <label>Этап продажи<select name="status"><option>Новая заявка</option><option>Замер</option><option>Расчёт</option><option>Переговоры</option><option>Договор</option><option>Стройка</option><option>Сдано</option><option>Отказ</option></select></label>
+      <div class="grid2"><label>Начало стройки<input name="startDate" type="date" /></label><label>План сдачи<input name="deadline" type="date" /></label></div>
       <label>Комментарий<textarea name="comment" rows="3"></textarea></label>
-      <button class="primary full" type="submit">Сохранить заказ</button>
+      <button class="primary full" type="submit">Сохранить сделку</button>
+    </form>
+  </dialog>
+
+  <dialog id="dealModal" class="modal">
+    <form id="dealForm" method="dialog">
+      <div class="modal-head"><h3 id="dealTitle">Сделка</h3><button type="button" class="close">×</button></div>
+      <input type="hidden" name="id" />
+      <div id="dealInfo" class="deal-info"></div>
+      <label>Этап продажи<select name="status"><option>Новая заявка</option><option>Замер</option><option>Расчёт</option><option>Переговоры</option><option>Договор</option><option>Стройка</option><option>Сдано</option><option>Отказ</option></select></label>
+      <div class="grid2"><label>Сумма, ₽<input name="price" type="number" min="0" /></label><label>Предоплата, ₽<input name="prepayment" type="number" min="0" /></label></div>
+      <div class="grid2"><label>Начало<input name="startDate" type="date" /></label><label>Сдача<input name="deadline" type="date" /></label></div>
+      <label>Комментарий<textarea name="comment" rows="3"></textarea></label>
+      <button class="primary full" type="submit">Сохранить изменения</button>
     </form>
   </dialog>
 
