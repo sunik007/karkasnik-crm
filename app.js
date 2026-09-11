@@ -1,37 +1,71 @@
-const STORAGE_KEY='karkasnik-crm-v1';
+const STORAGE_KEY='karkasnik-crm-v2';
+const OLD_KEY='karkasnik-crm-v1';
+const SALES_STAGES=['Новая заявка','Замер','Расчёт','Переговоры','Договор','Стройка','Сдано','Отказ'];
+const BUILD_STAGES=['Фундамент','Каркас','Кровля','Окна и двери','Утепление','Инженерия','Внутренняя отделка','Фасад','Сдача'];
+let activeSalesFilter='Все';
 let state=load();
 
 function load(){
-  try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||{clients:[],orders:[]}}catch{return{clients:[],orders:[]}}
+  try{
+    const current=localStorage.getItem(STORAGE_KEY);
+    if(current)return normalize(JSON.parse(current));
+    const old=localStorage.getItem(OLD_KEY);
+    if(old){const migrated=normalize(JSON.parse(old));localStorage.setItem(STORAGE_KEY,JSON.stringify(migrated));return migrated}
+  }catch{}
+  return{clients:[],orders:[]};
 }
+function normalize(data){
+  const s={clients:Array.isArray(data?.clients)?data.clients:[],orders:Array.isArray(data?.orders)?data.orders:[]};
+  s.orders=s.orders.map(o=>({...o,status:mapOldStatus(o.status),buildStages:o.buildStages||defaultBuildStages()}));
+  return s;
+}
+function mapOldStatus(v){return({'Новый':'Новая заявка','Расчёт':'Расчёт','Договор':'Договор','В работе':'Стройка','Завершён':'Сдано','Отказ':'Отказ'})[v]||v||'Новая заявка'}
+function defaultBuildStages(){return BUILD_STAGES.map(name=>({name,done:false}))}
 function save(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll()}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function money(v){return new Intl.NumberFormat('ru-RU').format(Number(v)||0)+' ₽'}
 function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-function clientName(id){return state.clients.find(c=>c.id===id)?.name||'Без клиента'}
+function client(id){return state.clients.find(c=>c.id===id)}
+function clientName(id){return client(id)?.name||'Без клиента'}
+function isBuild(o){return ['Стройка','Сдано'].includes(o.status)}
+function progress(o){const list=o.buildStages||defaultBuildStages();return Math.round((list.filter(s=>s.done).length/list.length)*100)}
+function badgeClass(status){if(status==='Стройка')return'build';if(status==='Сдано')return'done';if(status==='Отказ')return'off';if(['Договор','Переговоры'].includes(status))return'hot';return''}
 
 function renderStats(){
-  document.querySelector('#statClients').textContent=state.clients.length;
-  document.querySelector('#statOrders').textContent=state.orders.length;
-  document.querySelector('#statActive').textContent=state.orders.filter(o=>!['Завершён','Отказ'].includes(o.status)).length;
-  document.querySelector('#statRevenue').textContent=money(state.orders.reduce((s,o)=>s+(Number(o.price)||0),0));
+  const pipeline=state.orders.filter(o=>!['Сдано','Отказ'].includes(o.status));
+  const builds=state.orders.filter(o=>o.status==='Стройка');
+  document.querySelector('#statDeals').textContent=pipeline.length;
+  document.querySelector('#statBuilds').textContent=builds.length;
+  document.querySelector('#statRevenue').textContent=money(state.orders.filter(o=>o.status!=='Отказ').reduce((s,o)=>s+(Number(o.price)||0),0));
+  document.querySelector('#statPaid').textContent=money(state.orders.reduce((s,o)=>s+(Number(o.prepayment)||0),0));
 }
-
 function renderClientOptions(){
   const sel=document.querySelector('#orderClient');
-  if(!state.clients.length){sel.innerHTML='<option value="">Сначала добавьте клиента</option>';return}
-  sel.innerHTML='<option value="">Выберите клиента</option>'+state.clients.map(c=>`<option value="${c.id}">${esc(c.name)} — ${esc(c.phone)}</option>`).join('');
+  sel.innerHTML=state.clients.length?'<option value="">Выберите клиента</option>'+state.clients.map(c=>`<option value="${c.id}">${esc(c.name)} — ${esc(c.phone)}</option>`).join(''):'<option value="">Сначала добавьте клиента</option>';
 }
-
+function renderFunnel(){
+  const stages=SALES_STAGES.filter(x=>!['Стройка','Сдано','Отказ'].includes(x));
+  document.querySelector('#funnelSummary').innerHTML=stages.map(stage=>{
+    const rows=state.orders.filter(o=>o.status===stage);const total=rows.reduce((s,o)=>s+(Number(o.price)||0),0);
+    return `<div class="funnel-item"><span>${stage}</span><strong>${rows.length}</strong><small>${money(total)}</small></div>`
+  }).join('');
+}
+function renderSalesFilters(){
+  document.querySelector('#salesFilters').innerHTML=['Все',...SALES_STAGES].map(s=>`<button class="filter-chip ${activeSalesFilter===s?'active':''}" onclick="setSalesFilter('${s}')">${s}</button>`).join('');
+}
 function clientCard(c){
-  const orderCount=state.orders.filter(o=>o.clientId===c.id).length;
-  return `<article class="card"><div class="card-top"><div><h4>${esc(c.name)}</h4><div class="muted">${esc(c.phone)}${c.city?' · '+esc(c.city):''}</div></div><span class="badge">${orderCount} заказ.</span></div><div class="meta">${c.messenger?`<div>💬 ${esc(c.messenger)}</div>`:''}${c.address?`<div>📍 ${esc(c.address)}</div>`:''}<div>Источник: ${esc(c.source||'—')}</div>${c.comment?`<div>${esc(c.comment)}</div>`:''}</div><button class="danger-link" onclick="deleteClient('${c.id}')">Удалить клиента</button></article>`
+  const orders=state.orders.filter(o=>o.clientId===c.id);const active=orders.filter(o=>!['Сдано','Отказ'].includes(o.status)).length;
+  return `<article class="card"><div class="card-top"><div><h4>${esc(c.name)}</h4><div class="muted">${esc(c.phone)}${c.city?' · '+esc(c.city):''}</div></div><span class="badge">${active} активн.</span></div><div class="meta">${c.messenger?`<div>💬 ${esc(c.messenger)}</div>`:''}${c.address?`<div>📍 ${esc(c.address)}</div>`:''}<div>Источник: ${esc(c.source||'—')}</div>${c.comment?`<div>${esc(c.comment)}</div>`:''}</div><button class="danger-link" onclick="deleteClient('${c.id}')">Удалить клиента</button></article>`
 }
 function orderCard(o){
-  const dates=[o.startDate&&`Начало: ${o.startDate}`,o.deadline&&`Сдача: ${o.deadline}`].filter(Boolean).join(' · ');
-  return `<article class="card"><div class="card-top"><div><h4>${esc(clientName(o.clientId))}</h4><div class="muted">${esc(o.size||'Размер не указан')}${o.area?' · '+esc(o.area)+' м²':''}</div></div><span class="badge">${esc(o.status||'Новый')}</span></div><div class="meta"><div>${esc(o.package||'—')} · <strong>${money(o.price)}</strong></div>${o.prepayment?`<div>Предоплата: ${money(o.prepayment)}</div>`:''}${dates?`<div class="muted">${esc(dates)}</div>`:''}${o.comment?`<div>${esc(o.comment)}</div>`:''}</div><button class="danger-link" onclick="deleteOrder('${o.id}')">Удалить заказ</button></article>`
+  const c=client(o.clientId);const debt=Math.max(0,(Number(o.price)||0)-(Number(o.prepayment)||0));
+  return `<article class="card"><div class="card-top"><div><h4>${esc(c?.name||'Без клиента')}</h4><div class="muted">${esc(o.size||'Размер не указан')}${o.area?' · '+esc(o.area)+' м²':''}${c?.phone?' · '+esc(c.phone):''}</div></div><span class="badge ${badgeClass(o.status)}">${esc(o.status)}</span></div><div class="meta"><div>${esc(o.package||'—')} · <strong>${money(o.price)}</strong></div><div>Получено: ${money(o.prepayment)} · Остаток: ${money(debt)}</div>${o.deadline?`<div class="muted">План сдачи: ${esc(o.deadline)}</div>`:''}${o.comment?`<div>${esc(o.comment)}</div>`:''}</div><div class="deal-actions"><button class="text-btn" onclick="openDeal('${o.id}')">Открыть сделку</button>${o.status==='Договор'?`<button class="text-btn" onclick="moveToBuild('${o.id}')">Передать в стройку</button>`:''}</div></article>`
 }
-
+function buildCard(o,compact=false){
+  const p=progress(o);const stages=o.buildStages||defaultBuildStages();
+  const stageRows=compact?'':`<div class="stage-list">${stages.map((s,i)=>`<div class="stage-row"><label><input type="checkbox" ${s.done?'checked':''} onchange="toggleBuildStage('${o.id}',${i})">${esc(s.name)}</label><span class="muted">${s.done?'Готово':'В работе'}</span></div>`).join('')}</div>`;
+  return `<article class="card"><div class="card-top"><div><h4>${esc(clientName(o.clientId))} · ${esc(o.size||'Дом')}</h4><div class="muted">${o.area?esc(o.area)+' м² · ':''}${esc(o.package||'')}</div></div><span class="badge ${o.status==='Сдано'?'done':'build'}">${o.status}</span></div><div class="build-progress"><i style="width:${p}%"></i></div><div class="progress-label"><span>Готовность объекта</span><strong>${p}%</strong></div>${o.deadline?`<div class="meta"><div>План сдачи: ${esc(o.deadline)}</div></div>`:''}${stageRows}</article>`
+}
 function renderClients(){
   const q=document.querySelector('#clientSearch').value.trim().toLowerCase();
   const list=state.clients.filter(c=>[c.name,c.phone,c.city,c.address,c.source].join(' ').toLowerCase().includes(q));
@@ -39,42 +73,45 @@ function renderClients(){
 }
 function renderOrders(){
   const q=document.querySelector('#orderSearch').value.trim().toLowerCase();
-  const list=state.orders.filter(o=>[clientName(o.clientId),o.size,o.status,o.package].join(' ').toLowerCase().includes(q));
-  document.querySelector('#orderList').innerHTML=list.length?list.slice().reverse().map(orderCard).join(''):'<div class="empty">Заказов пока нет</div>';
+  let list=state.orders.filter(o=>[clientName(o.clientId),client(o.clientId)?.phone,o.size,o.status,o.package].join(' ').toLowerCase().includes(q));
+  if(activeSalesFilter!=='Все')list=list.filter(o=>o.status===activeSalesFilter);
+  document.querySelector('#orderList').innerHTML=list.length?list.slice().reverse().map(orderCard).join(''):'<div class="empty">Сделок не найдено</div>';
 }
-function renderRecent(){
-  const recent=state.orders.slice(-3).reverse();
-  document.querySelector('#recentOrders').innerHTML=recent.length?recent.map(orderCard).join(''):'<div class="empty">Добавьте первый заказ</div>';
+function renderBuilds(){
+  const q=document.querySelector('#buildSearch').value.trim().toLowerCase();
+  const list=state.orders.filter(o=>isBuild(o)&&[clientName(o.clientId),o.size,o.package].join(' ').toLowerCase().includes(q));
+  document.querySelector('#buildList').innerHTML=list.length?list.slice().reverse().map(o=>buildCard(o,false)).join(''):'<div class="empty">Объектов в стройке пока нет</div>';
 }
-function renderAll(){renderStats();renderClientOptions();renderClients();renderOrders();renderRecent()}
+function renderBuildSummary(){
+  const list=state.orders.filter(o=>o.status==='Стройка').slice(-3).reverse();
+  document.querySelector('#buildSummary').innerHTML=list.length?list.map(o=>buildCard(o,true)).join(''):'<div class="empty">Когда сделка перейдёт в «Стройка», объект появится здесь</div>';
+}
+function renderAll(){renderStats();renderClientOptions();renderFunnel();renderSalesFilters();renderClients();renderOrders();renderBuilds();renderBuildSummary()}
 
-window.deleteClient=id=>{
-  if(!confirm('Удалить клиента и все его заказы?'))return;
-  state.clients=state.clients.filter(c=>c.id!==id);
-  state.orders=state.orders.filter(o=>o.clientId!==id);save();
+window.setSalesFilter=s=>{activeSalesFilter=s;renderSalesFilters();renderOrders()};
+window.deleteClient=id=>{if(!confirm('Удалить клиента и все его сделки?'))return;state.clients=state.clients.filter(c=>c.id!==id);state.orders=state.orders.filter(o=>o.clientId!==id);save()};
+window.openDeal=id=>{
+  const o=state.orders.find(x=>x.id===id);if(!o)return;const c=client(o.clientId);const f=document.querySelector('#dealForm');
+  f.id.value=o.id;f.status.value=o.status;f.price.value=o.price||'';f.prepayment.value=o.prepayment||'';f.startDate.value=o.startDate||'';f.deadline.value=o.deadline||'';f.comment.value=o.comment||'';
+  document.querySelector('#dealTitle').textContent=c?.name||'Сделка';
+  document.querySelector('#dealInfo').innerHTML=`<strong>${esc(o.size||'Дом')} ${o.area?'· '+esc(o.area)+' м²':''}</strong><br>${esc(o.package||'—')}${c?.phone?'<br>'+esc(c.phone):''}`;
+  document.querySelector('#dealModal').showModal();
 };
-window.deleteOrder=id=>{if(confirm('Удалить заказ?')){state.orders=state.orders.filter(o=>o.id!==id);save()}};
+window.moveToBuild=id=>{const o=state.orders.find(x=>x.id===id);if(!o)return;o.status='Стройка';if(!o.buildStages)o.buildStages=defaultBuildStages();save();switchView('builds')};
+window.toggleBuildStage=(id,index)=>{const o=state.orders.find(x=>x.id===id);if(!o)return;if(!o.buildStages)o.buildStages=defaultBuildStages();o.buildStages[index].done=!o.buildStages[index].done;if(o.buildStages.every(s=>s.done))o.status='Сдано';save()};
 
-document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(v=>v.classList.remove('active'));
-  document.querySelector('#'+btn.dataset.view).classList.add('active');btn.classList.add('active');
-}));
+function switchView(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.querySelectorAll('.nav-btn').forEach(v=>v.classList.remove('active'));document.querySelector('#'+id).classList.add('active');document.querySelector(`.nav-btn[data-view="${id}"]`)?.classList.add('active');window.scrollTo({top:0,behavior:'smooth'})}
+document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>switchView(btn.dataset.view)));
+document.querySelectorAll('[data-view-jump]').forEach(btn=>btn.addEventListener('click',()=>switchView(btn.dataset.viewJump)));
 document.querySelectorAll('[data-open]').forEach(btn=>btn.addEventListener('click',()=>document.querySelector('#'+btn.dataset.open).showModal()));
 document.querySelectorAll('.close').forEach(btn=>btn.addEventListener('click',()=>btn.closest('dialog').close()));
 document.querySelector('#clientSearch').addEventListener('input',renderClients);
 document.querySelector('#orderSearch').addEventListener('input',renderOrders);
+document.querySelector('#buildSearch').addEventListener('input',renderBuilds);
 
-document.querySelector('#clientForm').addEventListener('submit',e=>{
-  e.preventDefault();const f=new FormData(e.currentTarget);
-  state.clients.push({id:uid(),name:f.get('name'),phone:f.get('phone'),messenger:f.get('messenger'),city:f.get('city'),address:f.get('address'),source:f.get('source'),date:f.get('date')||new Date().toISOString().slice(0,10),comment:f.get('comment')});
-  e.currentTarget.reset();e.currentTarget.closest('dialog').close();save();
-});
-document.querySelector('#orderForm').addEventListener('submit',e=>{
-  e.preventDefault();const f=new FormData(e.currentTarget);if(!f.get('clientId'))return alert('Сначала выберите клиента');
-  state.orders.push({id:uid(),clientId:f.get('clientId'),size:f.get('size'),area:f.get('area'),package:f.get('package'),price:f.get('price'),prepayment:f.get('prepayment'),status:f.get('status'),startDate:f.get('startDate'),deadline:f.get('deadline'),comment:f.get('comment')});
-  e.currentTarget.reset();e.currentTarget.closest('dialog').close();save();
-});
-document.querySelector('#resetBtn').addEventListener('click',()=>{if(confirm('Очистить все данные CRM на этом устройстве?')){state={clients:[],orders:[]};save()}});
+document.querySelector('#clientForm').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);state.clients.push({id:uid(),name:f.get('name'),phone:f.get('phone'),messenger:f.get('messenger'),city:f.get('city'),address:f.get('address'),source:f.get('source'),date:f.get('date')||new Date().toISOString().slice(0,10),comment:f.get('comment')});e.currentTarget.reset();e.currentTarget.closest('dialog').close();save()});
+document.querySelector('#orderForm').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);if(!f.get('clientId'))return alert('Сначала выберите клиента');state.orders.push({id:uid(),clientId:f.get('clientId'),size:f.get('size'),area:f.get('area'),package:f.get('package'),price:f.get('price'),prepayment:f.get('prepayment'),status:f.get('status'),startDate:f.get('startDate'),deadline:f.get('deadline'),comment:f.get('comment'),buildStages:defaultBuildStages()});e.currentTarget.reset();e.currentTarget.closest('dialog').close();save()});
+document.querySelector('#dealForm').addEventListener('submit',e=>{e.preventDefault();const f=new FormData(e.currentTarget);const o=state.orders.find(x=>x.id===f.get('id'));if(!o)return;o.status=f.get('status');o.price=f.get('price');o.prepayment=f.get('prepayment');o.startDate=f.get('startDate');o.deadline=f.get('deadline');o.comment=f.get('comment');if(isBuild(o)&&!o.buildStages)o.buildStages=defaultBuildStages();e.currentTarget.closest('dialog').close();save()});
+document.querySelector('#resetBtn').addEventListener('click',()=>{if(confirm('Очистить все данные CRM на этом устройстве?')){state={clients:[],orders:[]};localStorage.removeItem(OLD_KEY);save()}});
 
 renderAll();
