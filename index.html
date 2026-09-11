@@ -9,46 +9,30 @@
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <div class="eyebrow">КАРКАСНИК</div>
-      <h1>CRM</h1>
-    </div>
+    <div><div class="eyebrow">КАРКАСНИК</div><h1>CRM</h1></div>
     <button class="icon-btn" id="resetBtn" title="Очистить данные">↻</button>
   </header>
 
   <main class="container">
     <section id="dashboard" class="view active">
       <div class="hero professional">
-        <div>
-          <p>Панель управления</p>
-          <h2>Продажи и строительство под контролем</h2>
-        </div>
+        <div><p>Панель управления</p><h2>Продажи и строительство под контролем</h2></div>
         <button class="hero-action" data-open="orderModal">+ Новая сделка</button>
       </div>
-
       <div class="kpi-grid">
         <div class="kpi"><span>Сделок</span><strong id="statDeals">0</strong><small>в воронке</small></div>
         <div class="kpi"><span>В стройке</span><strong id="statBuilds">0</strong><small>активных объектов</small></div>
         <div class="kpi"><span>Портфель</span><strong id="statRevenue">0 ₽</strong><small>сумма договоров</small></div>
         <div class="kpi"><span>Получено</span><strong id="statPaid">0 ₽</strong><small>предоплат</small></div>
       </div>
-
-      <section class="panel">
-        <div class="section-head"><div><span class="section-kicker">ПРОДАЖИ</span><h3>Воронка</h3></div><button class="small secondary" data-view-jump="sales">Открыть</button></div>
-        <div id="funnelSummary" class="funnel-summary"></div>
-      </section>
-
-      <section class="panel">
-        <div class="section-head"><div><span class="section-kicker">СТРОЙКА</span><h3>Активные объекты</h3></div><button class="small secondary" data-view-jump="builds">Все объекты</button></div>
-        <div id="buildSummary" class="cards"></div>
-      </section>
+      <section class="panel"><div class="section-head"><div><span class="section-kicker">ПРОДАЖИ</span><h3>Воронка</h3></div><button class="small secondary" data-view-jump="sales">Открыть</button></div><div id="funnelSummary" class="funnel-summary"></div></section>
+      <section class="panel"><div class="section-head"><div><span class="section-kicker">СТРОЙКА</span><h3>Активные объекты</h3></div><button class="small secondary" data-view-jump="builds">Все объекты</button></div><div id="buildSummary" class="cards"></div></section>
     </section>
 
     <section id="sales" class="view">
       <div class="section-head sticky-head"><div><span class="section-kicker">CRM</span><h2>Продажи</h2></div><button class="small primary" data-open="orderModal">+ Сделка</button></div>
       <input class="search" id="orderSearch" placeholder="Клиент, телефон, размер, статус" />
-      <div class="stage-filter" id="salesFilters"></div>
-      <div id="orderList" class="cards"></div>
+      <div class="stage-filter" id="salesFilters"></div><div id="orderList" class="cards"></div>
     </section>
 
     <section id="builds" class="view">
@@ -71,45 +55,43 @@
     <button class="nav-btn" data-view="clients">👤<span>Клиенты</span></button>
   </nav>
 
-  <dialog id="clientModal" class="modal">
-    <form id="clientForm" method="dialog">
-      <div class="modal-head"><h3>Новый клиент</h3><button type="button" class="close">×</button></div>
-      <label>Имя<input name="name" required /></label>
-      <label>Телефон<input name="phone" type="tel" required /></label>
-      <label>WhatsApp / Telegram<input name="messenger" /></label>
-      <div class="grid2"><label>Город<input name="city" /></label><label>Дата обращения<input name="date" type="date" /></label></div>
-      <label>Адрес строительства<input name="address" /></label>
-      <label>Источник<select name="source"><option>Авито</option><option>Instagram</option><option>Рекомендация</option><option>Сайт</option><option>Другое</option></select></label>
-      <label>Комментарий<textarea name="comment" rows="3"></textarea></label>
-      <button class="primary full" type="submit">Сохранить клиента</button>
-    </form>
-  </dialog>
+  <dialog id="clientModal" class="modal"><form id="clientForm" method="dialog">
+    <div class="modal-head"><h3>Новый клиент</h3><button type="button" class="close">×</button></div>
+    <label>Имя<input name="name" required /></label><label>Телефон<input name="phone" type="tel" required /></label><label>WhatsApp / Telegram<input name="messenger" /></label>
+    <div class="grid2"><label>Город<input name="city" /></label><label>Дата обращения<input name="date" type="date" /></label></div>
+    <label>Адрес строительства<input name="address" /></label><label>Источник<select name="source"><option>Авито</option><option>Instagram</option><option>Рекомендация</option><option>Сайт</option><option>Другое</option></select></label>
+    <label>Комментарий<textarea name="comment" rows="3"></textarea></label><button class="primary full" type="submit">Сохранить клиента</button>
+  </form></dialog>
 
-  <dialog id="orderModal" class="modal">
-    <form id="orderForm" method="dialog">
-      <div class="modal-head"><h3>Новая сделка</h3><button type="button" class="close">×</button></div>
-      <label>Клиент<select name="clientId" id="orderClient" required></select></label>
-      <div class="grid2"><label>Размер дома<input name="size" placeholder="8×10" /></label><label>Площадь, м²<input name="area" type="number" min="0" /></label></div>
-      <label>Комплектация<select name="package"><option>Эконом</option><option>Тёплый контур</option><option>Под ключ</option><option>Индивидуальная</option></select></label>
-      <div class="grid2"><label>Сумма договора, ₽<input name="price" type="number" min="0" /></label><label>Предоплата, ₽<input name="prepayment" type="number" min="0" /></label></div>
-      <label>Этап продажи<select name="status"><option>Новая заявка</option><option>Замер</option><option>Расчёт</option><option>Переговоры</option><option>Договор</option><option>Стройка</option><option>Сдано</option><option>Отказ</option></select></label>
-      <div class="grid2"><label>Начало стройки<input name="startDate" type="date" /></label><label>План сдачи<input name="deadline" type="date" /></label></div>
-      <label>Комментарий<textarea name="comment" rows="3"></textarea></label>
-      <button class="primary full" type="submit">Сохранить сделку</button>
-    </form>
-  </dialog>
+  <dialog id="orderModal" class="modal"><form id="orderForm" method="dialog">
+    <div class="modal-head"><h3>Новая сделка</h3><button type="button" class="close">×</button></div>
+    <label>Клиент<select name="clientId" id="orderClient" required></select></label>
+    <div class="grid2"><label>Размер дома<input name="size" placeholder="8×10" /></label><label>Площадь, м²<input name="area" type="number" min="0" /></label></div>
+    <label>Комплектация<select name="package"><option>Эконом</option><option>Тёплый контур</option><option>Под ключ</option><option>Индивидуальная</option></select></label>
+    <div class="grid2"><label>Сумма договора, ₽<input name="price" type="number" min="0" /></label><label>Предоплата, ₽<input name="prepayment" type="number" min="0" /></label></div>
+    <label>Этап продажи<select name="status"><option>Новая заявка</option><option>Замер</option><option>Расчёт</option><option>Переговоры</option><option>Договор</option><option>Стройка</option><option>Сдано</option><option>Отказ</option></select></label>
+    <div class="grid2"><label>Начало стройки<input name="startDate" type="date" /></label><label>План сдачи<input name="deadline" type="date" /></label></div>
+    <label>Комментарий<textarea name="comment" rows="3"></textarea></label><button class="primary full" type="submit">Сохранить сделку</button>
+  </form></dialog>
 
-  <dialog id="dealModal" class="modal">
-    <form id="dealForm" method="dialog">
-      <div class="modal-head"><h3 id="dealTitle">Сделка</h3><button type="button" class="close">×</button></div>
-      <input type="hidden" name="id" />
-      <div id="dealInfo" class="deal-info"></div>
-      <label>Этап продажи<select name="status"><option>Новая заявка</option><option>Замер</option><option>Расчёт</option><option>Переговоры</option><option>Договор</option><option>Стройка</option><option>Сдано</option><option>Отказ</option></select></label>
-      <div class="grid2"><label>Сумма, ₽<input name="price" type="number" min="0" /></label><label>Предоплата, ₽<input name="prepayment" type="number" min="0" /></label></div>
-      <div class="grid2"><label>Начало<input name="startDate" type="date" /></label><label>Сдача<input name="deadline" type="date" /></label></div>
-      <label>Комментарий<textarea name="comment" rows="3"></textarea></label>
-      <button class="primary full" type="submit">Сохранить изменения</button>
-    </form>
+  <dialog id="dealModal" class="modal"><form id="dealForm" method="dialog">
+    <div class="modal-head"><h3 id="dealTitle">Сделка</h3><button type="button" class="close">×</button></div><input type="hidden" name="id" /><div id="dealInfo" class="deal-info"></div>
+    <label>Этап продажи<select name="status"><option>Новая заявка</option><option>Замер</option><option>Расчёт</option><option>Переговоры</option><option>Договор</option><option>Стройка</option><option>Сдано</option><option>Отказ</option></select></label>
+    <div class="grid2"><label>Сумма, ₽<input name="price" type="number" min="0" /></label><label>Предоплата, ₽<input name="prepayment" type="number" min="0" /></label></div>
+    <div class="grid2"><label>Начало<input name="startDate" type="date" /></label><label>Сдача<input name="deadline" type="date" /></label></div>
+    <label>Комментарий<textarea name="comment" rows="3"></textarea></label><button class="primary full" type="submit">Сохранить изменения</button>
+  </form></dialog>
+
+  <dialog id="objectModal" class="modal object-modal">
+    <div class="object-shell">
+      <div class="modal-head"><div><span class="section-kicker">КАРТОЧКА ОБЪЕКТА</span><h3 id="objectTitle">Объект</h3></div><button type="button" class="close">×</button></div>
+      <input type="hidden" id="objectId" />
+      <div id="objectSummary" class="object-summary"></div>
+      <div class="object-tabs">
+        <button class="object-tab active" data-object-tab="overview">Обзор</button><button class="object-tab" data-object-tab="expenses">Расходы</button><button class="object-tab" data-object-tab="team">Бригада</button><button class="object-tab" data-object-tab="docs">Документы</button><button class="object-tab" data-object-tab="photos">Фото</button><button class="object-tab" data-object-tab="history">История</button>
+      </div>
+      <div id="objectContent"></div>
+    </div>
   </dialog>
 
   <script src="app.js"></script>
